@@ -1,0 +1,6 @@
+# Setup auto Change-ID
+mkdir -p ~/.git-templates/hooks
+curl -Lo ~/.git-templates/hooks/commit-msg https://gerrit-review.googlesource.com/tools/hooks/commit-msg
+chmod u+x ~/.git-templates/hooks/commit-msg
+
+git config --global init.templateDir ~/.git-templates
