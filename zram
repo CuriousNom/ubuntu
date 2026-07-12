@@ -1,0 +1,21 @@
+# Install zram generator
+sudo apt install systemd-zram-generator
+
+# configure zram
+sudo tee /etc/systemd/zram-generator.conf << 'EOF'
+[zram0]
+zram-size = 32768
+compression-algorithm = zstd
+swap-priority = 100
+fs-type = swap
+EOF
+
+# Enable/start 
+sudo systemctl daemon-reload
+sudo systemctl start /dev/zram0
+swapon --show
+
+# custom tuning
+echo 'vm.swappiness=150' | sudo tee -a /etc/sysctl.conf
+echo 'vm.page-cluster=0' | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p

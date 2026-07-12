@@ -1,0 +1,10 @@
+# No Swap
+sudo swapoff /swap.img
+sudo rm /swap.img
+
+# comment out swap line
+sudo nano /etc/fstab
+
+# verify
+swapon --show
+free -h
