@@ -1,3 +1,57 @@
 # Toggle scroll lock on/off
 echo 1 | sudo tee /sys/class/leds/input3::scrolllock/brightness
 echo 0 | sudo tee /sys/class/leds/input3::scrolllock/brightness
+
+### Setup scroll lock key
+
+# 1. Install dependencies
+sudo apt install python3-evdev evtest -y
+
+# 2. Find your keyboard's event device (note the number, e.g. event3)
+sudo evtest
+# Press Ctrl+C after noting your keyboard's /dev/input/eventX
+
+# 3. Find your scroll lock LED path
+ls /sys/class/leds/ | grep -i scroll
+# Note the name, e.g. input3::scrolllock
+
+# 4. Create the daemon script (edit DEVICE and LED_PATH below to match what you found)
+sudo tee /usr/local/bin/scrolllock-daemon.py > /dev/null << 'EOF'
+#!/usr/bin/env python3
+import evdev
+from evdev import ecodes
+
+DEVICE = "/dev/input/event3"
+LED_PATH = "/sys/class/leds/input3::scrolllock/brightness"
+
+dev = evdev.InputDevice(DEVICE)
+state = 0
+
+for event in dev.read_loop():
+    if event.type == ecodes.EV_KEY and event.code == ecodes.KEY_SCROLLLOCK and event.value == 1:
+        state = 0 if state else 1
+        with open(LED_PATH, "w") as f:
+            f.write(str(state))
+EOF
+sudo chmod +x /usr/local/bin/scrolllock-daemon.py
+
+# 5. Create systemd service
+sudo tee /etc/systemd/system/scrolllock-daemon.service > /dev/null << 'EOF'
+[Unit]
+Description=Scroll Lock LED toggle daemon
+After=multi-user.target
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/local/bin/scrolllock-daemon.py
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 6. Enable and start
+sudo systemctl daemon-reload
+sudo systemctl enable scrolllock-daemon.service
+sudo systemctl start scrolllock-daemon.service
+sudo systemctl status scrolllock-daemon.service
