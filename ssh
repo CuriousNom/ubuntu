@@ -1,0 +1,13 @@
+# Install ssh
+sudo apt update
+sudo apt install openssh-server
+
+# Enable ssh
+sudo systemctl enable ssh
+sudo systemctl start ssh
+
+# ssh status
+sudo systemctl status ssh
+
+# hostname
+hostname -I
