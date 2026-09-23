@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+FILE=".git/commitdates.saved"
+IDXFILE=".git/commitdates.idx"
+EXECSCRIPT=".git/commitdates.exec.sh"
+
+show_help() {
+cat <<'EOF'
+commitdates.sh — save/reapply committer dates for last N commits, by position
+
+USAGE:
+  commitdates.sh save N
+  commitdates.sh apply
+  commitdates.sh -h|--help
+EOF
+}
+
+[[ $# -eq 0 || "$1" == "-h" || "$1" == "--help" ]] && { show_help; exit 0; }
+
+case "$1" in
+  save)
+    N="${2:?Usage: commitdates.sh save N}"
+    git log --reverse -n "$N" --format='%cI' > "$FILE"
+    echo "Saved committer dates for last $N commits."
+    ;;
+  apply)
+    [[ -f "$FILE" ]] || { echo "No saved dates. Run 'save' first."; exit 1; }
+    N=$(wc -l < "$FILE")
+    rm -f "$IDXFILE"
+    ABS_FILE="$(pwd)/$FILE"
+    ABS_IDXFILE="$(pwd)/$IDXFILE"
+
+    cat > "$EXECSCRIPT" <<EOF
+#!/usr/bin/env bash
+set -e
+[ -f "$ABS_IDXFILE" ] || echo 0 > "$ABS_IDXFILE"
+i=\$(( \$(cat "$ABS_IDXFILE") + 1 ))
+echo "\$i" > "$ABS_IDXFILE"
+d=\$(sed -n "\${i}p" "$ABS_FILE")
+GIT_COMMITTER_DATE="\$d" git commit --amend --no-edit
+EOF
+    chmod +x "$EXECSCRIPT"
+
+    GIT_SEQUENCE_EDITOR=true git rebase HEAD~"$N" --exec "$(pwd)/$EXECSCRIPT"
+
+    rm -f "$IDXFILE" "$EXECSCRIPT"
+    echo "Reapplied committer dates."
+    ;;
+esac
